@@ -2,54 +2,137 @@
 
 {% block title %}Purchase Orders - IMS{% endblock %}
 
+{% block extra_css %}
+<style>
+    .stat-card {
+        border-radius: 15px;
+        padding: 2rem;
+        color: white;
+        text-align: center;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .stat-card.blue {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+    
+    .stat-card.yellow {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    
+    .stat-card.green {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+    
+    .stat-card.cyan {
+        background: linear-gradient(135deg, #06b6d4, #0891b2);
+    }
+    
+    .stat-card i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.9;
+    }
+    
+    .stat-card h2 {
+        font-size: 3rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    
+    .stat-card p {
+        font-size: 1.1rem;
+        margin: 0;
+        opacity: 0.95;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+    
+    .empty-state i {
+        font-size: 5rem;
+        color: #9ca3af;
+        margin-bottom: 1.5rem;
+    }
+    
+    .search-box {
+        max-width: 400px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid px-4">
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-shopping-cart"></i> Purchase Orders</h2>
-        <a href="{{ url_for('new_purchase') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> New Purchase Order
+        <div>
+            <h2 class="mb-1"><i class="fas fa-shopping-cart text-primary"></i> Purchase Orders</h2>
+            <p class="text-muted mb-0">Manage purchase orders and track supplier deliveries</p>
+        </div>
+        <a href="{{ url_for('new_purchase') }}" class="btn btn-success btn-lg">
+            <i class="fas fa-plus"></i> Create Purchase Order
         </a>
     </div>
 
+    <!-- Statistics Cards -->
     <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card text-white bg-warning">
-                <div class="card-body">
-                    <h5 class="card-title">Pending Orders</h5>
-                    <h4>{{ orders|selectattr('status', 'equalto', 'pending')|list|length }}</h4>
-                </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card blue shadow">
+                <i class="fas fa-file-invoice"></i>
+                <h2>{{ orders|length if orders else 0 }}</h2>
+                <p>Total Purchase Orders</p>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-success">
-                <div class="card-body">
-                    <h5 class="card-title">Received Orders</h5>
-                    <h4>{{ orders|selectattr('status', 'equalto', 'received')|list|length }}</h4>
-                </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card yellow shadow">
+                <i class="fas fa-clock"></i>
+                <h2>{{ orders|selectattr('status', 'equalto', 'pending')|list|length if orders else 0 }}</h2>
+                <p>Pending Orders</p>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-primary">
-                <div class="card-body">
-                    <h5 class="card-title">Total Value</h5>
-                    <h4>₹{{ "%.2f"|format((orders|sum(attribute='total_amount')) or 0) }}</h4>
-                </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card green shadow">
+                <i class="fas fa-check-circle"></i>
+                <h2>{{ orders|selectattr('status', 'equalto', 'received')|list|length if orders else 0 }}</h2>
+                <p>Completed Orders</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card cyan shadow">
+                <i class="fas fa-rupee-sign"></i>
+                <h2>₹{{ "%.2f"|format(orders|sum(attribute='total_amount') if orders else 0) }}</h2>
+                <p>Total Value</p>
             </div>
         </div>
     </div>
 
-    <div class="card shadow">
+    <!-- Purchase Orders List -->
+    <div class="card border-0 shadow-sm">
         <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Purchase Orders List</h5>
+                <div class="search-box">
+                    <input type="text" class="form-control" id="searchInput" placeholder="🔍 Search purchase orders...">
+                </div>
+            </div>
+            
+            {% if orders %}
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
+                <table class="table table-hover mb-0" id="ordersTable">
+                    <thead class="bg-light">
                         <tr>
-                            <th>PO #</th>
+                            <th class="ps-4">#</th>
+                            <th>PO Number</th>
                             <th>Supplier</th>
                             <th>Order Date</th>
                             <th>Expected Delivery</th>
                             <th>Total Amount</th>
-                            <th>Items</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -57,52 +140,62 @@
                     <tbody>
                         {% for order in orders %}
                         <tr>
-                            <td><strong>PO-{{ order.id }}</strong></td>
+                            <td class="ps-4">{{ loop.index }}</td>
+                            <td><strong>PO-{{ order.order_date.strftime('%Y%m%d') }}-{{ '%03d'|format(order.id) }}</strong></td>
                             <td>{{ order.supplier.name if order.supplier else 'N/A' }}</td>
-                            <td>{{ order.order_date.strftime('%d %b %Y') }}</td>
-                            <td>{{ order.expected_delivery.strftime('%d %b %Y') if order.expected_delivery else 'Not Set' }}</td>
-                            <td><strong class="text-success">₹{{ "%.2f"|format(order.total_amount) }}</strong></td>
-                            <td>{{ order.purchase_items|length }} item(s)</td>
+                            <td>{{ order.order_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ order.expected_delivery.strftime('%Y-%m-%d') if order.expected_delivery else 'N/A' }}</td>
+                            <td><strong>₹{{ "%.2f"|format(order.total_amount) }}</strong></td>
                             <td>
                                 {% if order.status == 'pending' %}
-                                    <span class="badge bg-warning text-dark">Pending</span>
+                                    <span class="badge bg-warning text-dark">⏳ Pending</span>
                                 {% elif order.status == 'received' %}
-                                    <span class="badge bg-success">Received</span>
+                                    <span class="badge bg-success">✅ Received</span>
                                 {% else %}
                                     <span class="badge bg-secondary">{{ order.status }}</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if order.status == 'pending' %}
-                                    <a href="{{ url_for('receive_purchase', id=order.id) }}" 
-                                       class="btn btn-sm btn-success" 
-                                       onclick="return confirm('Mark this order as received? Stock will be updated.')">
+                                    <a href="{{ url_for('receive_purchase', id=order.id) }}" class="btn btn-sm btn-success" onclick="return confirm('Mark this order as received and update stock?')">
                                         <i class="fas fa-check"></i> Receive
                                     </a>
-                                    <a href="{{ url_for('delete_purchase', id=order.id) }}" 
-                                       class="btn btn-sm btn-danger" 
-                                       onclick="return confirm('Delete this purchase order?')">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                {% else %}
-                                    <button class="btn btn-sm btn-secondary" disabled>
-                                        <i class="fas fa-check-circle"></i> Received
-                                    </button>
                                 {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="8" class="text-center py-4">
-                                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">No purchase orders found. Create your first purchase order!</p>
+                                <a href="{{ url_for('delete_purchase', id=order.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this order?')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-shopping-cart"></i>
+                <h4 class="text-muted">No Purchase Orders Found</h4>
+                <p class="text-muted mb-4">Create your first purchase order to start managing supplier orders.</p>
+                <a href="{{ url_for('new_purchase') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus"></i> Create First Purchase Order
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<script>
+// Search functionality
+document.getElementById('searchInput')?.addEventListener('keyup', function() {
+    const searchValue = this.value.toLowerCase();
+    const table = document.getElementById('ordersTable');
+    const rows = table?.getElementsByTagName('tr');
+    
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchValue) ? '' : 'none';
+    }
+});
+</script>
 {% endblock %}
