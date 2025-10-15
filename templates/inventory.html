@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Inventory Management{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Statistics Cards Row -->
+    <div class="row mb-4">
+        <!-- Total Products Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Products</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_products }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-box-seam fs-2 text-primary opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Categories Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Categories</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_categories }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-tags fs-2 text-success opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Suppliers Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Suppliers</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_suppliers }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-truck fs-2 text-info opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Sales Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Today's Sales</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ "%.2f"|format(today_sales) }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-currency-rupee fs-2 text-warning opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightning-charge-fill"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="{{ url_for('new_sale') }}" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-cart-plus fs-4"></i>
+                                <div class="mt-2">New Sale</div>
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="{{ url_for('new_purchase') }}" class="btn btn-info btn-lg w-100">
+                                <i class="bi bi-bag-plus fs-4"></i>
+                                <div class="mt-2">New Purchase</div>
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="{{ url_for('products') }}" class="btn btn-success btn-lg w-100">
+                                <i class="bi bi-box fs-4"></i>
+                                <div class="mt-2">Manage Products</div>
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="{{ url_for('reports') }}" class="btn btn-warning btn-lg w-100">
+                                <i class="bi bi-graph-up fs-4"></i>
+                                <div class="mt-2">View Reports</div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Low Stock Alert -->
+    {% if low_stock_products %}
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card border-danger shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Low Stock Alert ({{ low_stock_products|length }} items)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Product</th>
+                                    <th>SKU</th>
+                                    <th>Category</th>
+                                    <th>Current Stock</th>
+                                    <th>Reorder Level</th>
+                                    <th>Price</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in low_stock_products %}
+                                <tr class="{% if product.quantity == 0 %}table-danger{% endif %}">
+                                    <td>{{ loop.index }}</td>
+                                    <td><strong>{{ product.name }}</strong></td>
+                                    <td>{{ product.sku or 'N/A' }}</td>
+                                    <td>{{ product.category.name }}</td>
+                                    <td>
+                                        <span class="badge {% if product.quantity == 0 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                            {{ product.quantity }}
+                                        </span>
+                                    </td>
+                                    <td>{{ product.reorder_level }}</td>
+                                    <td>₹{{ "%.2f"|format(product.unit_price) }}</td>
+                                    <td>
+                                        <a href="{{ url_for('new_purchase') }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-cart-plus"></i> Reorder
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Sales and Inventory Summary Row -->
+    <div class="row">
+        <!-- Recent Sales -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Sales</h5>
+                    <a href="{{ url_for('sales') }}" class="btn btn-sm btn-light">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_sales %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sale ID</th>
+                                    <th>Date & Time</th>
+                                    <th>Amount</th>
+                                    <th>Payment</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sale in recent_sales %}
+                                <tr>
+                                    <td><strong>#{{ sale.id }}</strong></td>
+                                    <td>{{ sale.created_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+                                    <td><strong>₹{{ "%.2f"|format(sale.total_amount) }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ sale.payment_method }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ sale.status }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('view_invoice', id=sale.id) }}" class="btn btn-sm btn-info">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-cart-x fs-1 text-muted"></i>
+                        <p class="text-muted mt-3 mb-0">No sales recorded yet.</p>
+                        <a href="{{ url_for('new_sale') }}" class="btn btn-primary mt-3">
+                            <i class="bi bi-plus-circle"></i> Create First Sale
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sales Summary -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Sales Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">Today's Sales</span>
+                            <strong class="text-success fs-5">₹{{ "%.2f"|format(today_sales) }}</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">This Month</span>
+                            <strong class="text-primary fs-5">₹{{ "%.2f"|format(month_sales) }}</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">Total Inventory Value</span>
+                            <strong class="text-info fs-5">₹{{ "%.2f"|format(total_value if total_value else 0) }}</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('reports') }}" class="btn btn-outline-success">
+                            <i class="bi bi-file-earmark-bar-graph"></i> Full Reports
+                        </a>
+                        <a href="{{ url_for('stock_management') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-inboxes"></i> Manage Stock
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-speedometer2"></i> System Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-box fs-1 text-primary"></i>
+                                <h3 class="mt-2 mb-0">{{ total_products }}</h3>
+                                <small class="text-muted">Total Products</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-people fs-1 text-info"></i>
+                                <h3 class="mt-2 mb-0">{{ total_customers }}</h3>
+                                <small class="text-muted">Customers</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-building fs-1 text-success"></i>
+                                <h3 class="mt-2 mb-0">{{ total_suppliers }}</h3>
+                                <small class="text-muted">Suppliers</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="border rounded p-3">
+                                <i class="bi bi-tags fs-1 text-warning"></i>
+                                <h3 class="mt-2 mb-0">{{ total_categories }}</h3>
+                                <small class="text-muted">Categories</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-left-primary {
+        border-left: 4px solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 4px solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 4px solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 4px solid #f6c23e !important;
+    }
+    .text-xs {
+        font-size: 0.7rem;
+    }
+    .text-gray-800 {
+        color: #5a5c69 !important;
+    }
+    .card {
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .btn-lg {
+        padding: 1rem;
+        text-align: center;
+    }
+</style>
+{% endblock %}

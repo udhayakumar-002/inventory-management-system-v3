@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block styles %}
+<style>
+    main {
+        height: 100vh;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <main>
+        <div class="d-flex flex-column w-100 justify-content-center align-items-center">
+            <div class="mb-4">
+                <center>
+                    <img src="/static/default/logo.png" alt="Logo" onerror="this.style.display='none'">
+                </center>
+            </div>
+            <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12">
+                <div class="card card-default rounded-0 shadow">
+                    <div class="card-header">
+                        <h4 class="card-title"><b>Login</b></h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="container-fluid">
+                            <form id="login-user" method="POST" action="{{ url_for('login') }}">
+                                <!-- CRITICAL FIX: Add CSRF Token -->
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                
+                                <div class="mdc-layout-grid">
+                                    <div class="mdc-layout-grid__inner">
+                                        <div class="form-group mb-3">
+                                            <label for="username" class="control-label">Username</label>
+                                            <input type="text" class="form-control rounded-0" name="username" id="username" required="required" autofocus>
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <label for="password" class="control-label">Password</label>
+                                            <input type="password" class="form-control rounded-0" name="password" id="password" required="required">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 text-center">
+                                        <button type="submit" class="btn btn-primary">Login</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(function() {
+        $('#login-user').submit(function(e) {
+            e.preventDefault();
+            var _this = $(this);
+            $('.err-msg').remove();
+            var el = $('<div>');
+            el.addClass("alert alert-danger err-msg");
+            el.hide();
+            
+            if (_this[0].checkValidity() == false) {
+                _this[0].reportValidity();
+                return false;
+            }
+            
+            // Disable submit button to prevent double submission
+            var submitBtn = _this.find('button[type="submit"]');
+            submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Logging in...');
+            
+            $.ajax({
+                url: "{{ url_for('login') }}",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                type: 'POST',
+                dataType: 'json',
+                error: function(err) {
+                    console.log(err);
+                    
+                    // Re-enable button
+                    submitBtn.prop('disabled', false).html('Login');
+                    
+                    // Check if it's a redirect (successful login without JSON response)
+                    if (err.status === 200 || err.status === 302) {
+                        window.location.href = "{{ url_for('dashboard') }}";
+                        return;
+                    }
+                    
+                    el.text("An error occurred. Please try again.");
+                    _this.prepend(el);
+                    el.show('slow');
+                    $("html, body, .modal").scrollTop(0);
+                },
+                success: function(resp) {
+                    // Re-enable button
+                    submitBtn.prop('disabled', false).html('Login');
+                    
+                    if (typeof resp == 'object' && resp.status == 'success') {
+                        el.removeClass("alert alert-danger err-msg");
+                        el.addClass("alert alert-success");
+                        el.text("Login successful! Redirecting...");
+                        _this.prepend(el);
+                        el.show('slow');
+                        setTimeout(function() {
+                            window.location.href = "{{ url_for('dashboard') }}";
+                        }, 500);
+                    } else if (resp.status == 'failed' && !!resp.msg) {
+                        el.text(resp.msg);
+                        _this.prepend(el);
+                        el.show('slow');
+                        $("html, body, .modal").scrollTop(0);
+                    } else {
+                        el.text("An error occurred");
+                        console.error(resp);
+                        _this.prepend(el);
+                        el.show('slow');
+                        $("html, body, .modal").scrollTop(0);
+                    }
+                }
+            });
+            
+            return false;
+        });
+    });
+</script>
+{% endblock %}

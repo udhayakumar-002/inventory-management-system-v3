@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Sales - IMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-shopping-bag"></i> Sales Records</h2>
+        <a href="{{ url_for('new_sale') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Sale
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Sales List</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Invoice Number</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Total Amount</th>
+                            <th>Payment Method</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if sales %}
+                            {% for sale in sales %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>#{{ sale.id }}</strong></td>
+                                <td>
+                                    {% if sale.customer %}
+                                        {{ sale.customer.name }}
+                                    {% else %}
+                                        <span class="text-muted">Walk-in Customer</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ sale.created_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+                                <td><strong class="text-success">₹{{ "%.2f"|format(sale.total_amount) }}</strong></td>
+                                <td>
+                                    {% if sale.payment_method == 'cash' %}
+                                        <span class="badge bg-success">💵 Cash</span>
+                                    {% elif sale.payment_method == 'card' %}
+                                        <span class="badge bg-primary">💳 Card</span>
+                                    {% elif sale.payment_method == 'upi' %}
+                                        <span class="badge bg-info">📱 UPI</span>
+                                    {% elif sale.payment_method == 'bank_transfer' %}
+                                        <span class="badge bg-warning text-dark">🏦 Bank</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ sale.payment_method }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if sale.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif sale.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ sale.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('view_invoice', id=sale.id) }}" class="btn btn-sm btn-info" target="_blank" title="View Invoice">
+                                        <i class="fas fa-file-invoice"></i> Invoice
+                                    </a>
+                                    <a href="{{ url_for('delete_sale', id=sale.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this sale? Stock will be restored.')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted mb-0">No sales recorded yet. Create your first sale!</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if sales %}
+    <div class="card shadow mt-4">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <h6 class="text-muted">Total Sales</h6>
+                    <h4 class="text-primary">{{ sales|length }}</h4>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-muted">Today's Sales</h6>
+                    <h4 class="text-success">{{ sales|selectattr('created_at')|list|length }}</h4>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-muted">Total Revenue</h6>
+                    <h4 class="text-info">₹{{ "%.2f"|format(sales|sum(attribute='total_amount')) }}</h4>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-muted">Average Sale</h6>
+                    <h4 class="text-warning">₹{{ "%.2f"|format((sales|sum(attribute='total_amount') / sales|length) if sales|length > 0 else 0) }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Products - IMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-box"></i> Manage Products</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+            <i class="fas fa-plus"></i> Add Product
+        </button>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Reorder Level</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td><code>{{ product.sku or 'N/A' }}</code></td>
+                            <td><strong>{{ product.name }}</strong></td>
+                            <td><span class="badge bg-info">{{ product.category.name }}</span></td>
+                            <td>₹{{ "%.2f"|format(product.unit_price) }}</td>
+                            <td><strong>{{ product.quantity }}</strong></td>
+                            <td>{{ product.reorder_level }}</td>
+                            <td>
+                                {% if product.quantity == 0 %}
+                                    <span class="badge bg-dark">Out of Stock</span>
+                                {% elif product.quantity <= product.reorder_level %}
+                                    <span class="badge bg-danger">Low Stock</span>
+                                {% elif product.quantity <= product.reorder_level * 2 %}
+                                    <span class="badge bg-warning">Medium Stock</span>
+                                {% else %}
+                                    <span class="badge bg-success">In Stock</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editProduct({{ product.id }}, '{{ product.name|replace("'", "\\'") }}', {{ product.category_id }}, '{{ (product.description or '')|replace("'", "\\'") }}', {{ product.unit_price }}, {{ product.reorder_level }}, '{{ product.sku or '' }}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <a href="{{ url_for('delete_product', id=product.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this product?')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No products found. Click "Add Product" to create one!</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addProductModalLabel">
+                    <i class="fas fa-plus-circle"></i> Add New Product
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_product') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="productName" class="form-label">Product Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="productName" name="name" placeholder="e.g., Dell Laptop XPS 15" required autofocus>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="productSku" class="form-label">SKU</label>
+                            <input type="text" class="form-control" id="productSku" name="sku" placeholder="e.g., PROD001">
+                            <small class="form-text text-muted">Stock Keeping Unit</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="productCategory" class="form-label">Category <span class="text-danger">*</span></label>
+                            <select class="form-control" id="productCategory" name="category_id" required>
+                                <option value="">-- Select Category --</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="productPrice" class="form-label">Unit Price (₹) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="productPrice" name="unit_price" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="productQuantity" class="form-label">Initial Quantity</label>
+                            <input type="number" min="0" class="form-control" id="productQuantity" name="quantity" value="0">
+                            <small class="form-text text-muted">Starting stock quantity</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="productReorder" class="form-label">Reorder Level</label>
+                            <input type="number" min="1" class="form-control" id="productReorder" name="reorder_level" value="10">
+                            <small class="form-text text-muted">Low stock alert threshold</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="productDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="productDescription" name="description" rows="3" placeholder="Product details, specifications, notes..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Product
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="editProductModalLabel">
+                    <i class="fas fa-edit"></i> Edit Product
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" id="editProductForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="editProductName" class="form-label">Product Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editName" name="name" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="editProductSku" class="form-label">SKU</label>
+                            <input type="text" class="form-control" id="editSku" name="sku">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editProductCategory" class="form-label">Category <span class="text-danger">*</span></label>
+                            <select class="form-control" id="editCategory" name="category_id" required>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editProductPrice" class="form-label">Unit Price (₹) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="editPrice" name="unit_price" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editProductReorder" class="form-label">Reorder Level</label>
+                        <input type="number" min="1" class="form-control" id="editReorder" name="reorder_level">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editProductDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> <strong>Note:</strong> To change quantity, use Stock Management page.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-check"></i> Update Product
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editProduct(id, name, category_id, description, price, reorder, sku) {
+    document.getElementById('editProductForm').action = "{{ url_for('edit_product', id=0) }}".replace('0', id);
+    document.getElementById('editName').value = name;
+    document.getElementById('editCategory').value = category_id;
+    document.getElementById('editDescription').value = description;
+    document.getElementById('editPrice').value = price;
+    document.getElementById('editReorder').value = reorder;
+    document.getElementById('editSku').value = sku;
+    new bootstrap.Modal(document.getElementById('editProductModal')).show();
+}
+</script>
+{% endblock %}

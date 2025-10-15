@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports & Analytics - IMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="fas fa-chart-bar"></i> Reports & Analytics</h2>
+
+    <!-- Sales Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-success shadow">
+                <div class="card-body">
+                    <h6 class="card-title">Today's Sales</h6>
+                    <h3 class="mb-0">₹{{ "%.2f"|format(today_sales or 0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info shadow">
+                <div class="card-body">
+                    <h6 class="card-title">This Week</h6>
+                    <h3 class="mb-0">₹{{ "%.2f"|format(week_sales or 0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-primary shadow">
+                <div class="card-body">
+                    <h6 class="card-title">This Month</h6>
+                    <h3 class="mb-0">₹{{ "%.2f"|format(month_sales or 0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning shadow">
+                <div class="card-body">
+                    <h6 class="card-title">Total Sales</h6>
+                    <h3 class="mb-0">₹{{ "%.2f"|format(total_sales or 0) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Reports Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-download"></i> Export Reports</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                            <h6>Sales Report</h6>
+                            <p class="text-muted small">Export all sales transactions</p>
+                            <a href="{{ url_for('export_sales') }}" class="btn btn-success">
+                                <i class="fas fa-download"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card border-primary">
+                        <div class="card-body text-center">
+                            <i class="fas fa-file-excel fa-3x text-primary mb-3"></i>
+                            <h6>Products Report</h6>
+                            <p class="text-muted small">Export product inventory list</p>
+                            <a href="{{ url_for('export_products') }}" class="btn btn-primary">
+                                <i class="fas fa-download"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card border-info">
+                        <div class="card-body text-center">
+                            <i class="fas fa-file-excel fa-3x text-info mb-3"></i>
+                            <h6>Inventory History</h6>
+                            <p class="text-muted small">Export stock movement history</p>
+                            <a href="{{ url_for('export_inventory') }}" class="btn btn-info">
+                                <i class="fas fa-download"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Low Stock Alert -->
+    {% if low_stock %}
+    <div class="card shadow mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-exclamation-triangle"></i> Low Stock Alert 
+                <span class="badge bg-white text-danger">{{ low_stock|length }} items</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Current Stock</th>
+                            <th>Reorder Level</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in low_stock %}
+                        <tr class="{% if product.quantity == 0 %}table-danger{% else %}table-warning{% endif %}">
+                            <td><strong>{{ product.name }}</strong></td>
+                            <td>{{ product.category.name }}</td>
+                            <td>
+                                <span class="badge {% if product.quantity == 0 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                    {{ product.quantity }}
+                                </span>
+                            </td>
+                            <td>{{ product.reorder_level }}</td>
+                            <td>
+                                <a href="{{ url_for('stock_management') }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-plus"></i> Restock
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Top Selling Products -->
+    {% if top_products %}
+    <div class="card shadow mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-star text-warning"></i> Top Selling Products</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Product</th>
+                            <th>Units Sold</th>
+                            <th>Total Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in top_products %}
+                        <tr>
+                            <td><strong>{{ loop.index }}</strong></td>
+                            <td>
+                                {% if loop.index == 1 %}
+                                    <i class="fas fa-trophy text-warning"></i>
+                                {% elif loop.index == 2 %}
+                                    <i class="fas fa-medal text-secondary"></i>
+                                {% elif loop.index == 3 %}
+                                    <i class="fas fa-medal text-danger"></i>
+                                {% endif %}
+                                {{ product.name }}
+                            </td>
+                            <td><span class="badge bg-primary">{{ product.total_sold }}</span></td>
+                            <td><strong class="text-success">₹{{ "%.2f"|format(product.total_revenue) }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card shadow mb-4">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+            <p class="text-muted">No sales data available yet. Start making sales to see top products!</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Stock Activities -->
+    {% if recent_activities %}
+    <div class="card shadow">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-history"></i> Recent Stock Activities</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Product</th>
+                            <th>Type</th>
+                            <th>Change</th>
+                            <th>Before</th>
+                            <th>After</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in recent_activities %}
+                        <tr>
+                            <td>{{ activity.created_at.strftime('%d %b, %I:%M %p') }}</td>
+                            <td>{{ activity.product.name }}</td>
+                            <td>
+                                {% if activity.change_type == 'sale' %}
+                                    <span class="badge bg-danger">Sale</span>
+                                {% elif activity.change_type == 'purchase' %}
+                                    <span class="badge bg-success">Purchase</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ activity.change_type }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if activity.quantity_change > 0 %}
+                                    <span class="text-success">+{{ activity.quantity_change }}</span>
+                                {% else %}
+                                    <span class="text-danger">{{ activity.quantity_change }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ activity.previous_quantity }}</td>
+                            <td><strong>{{ activity.new_quantity }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-center mt-3">
+                <a href="{{ url_for('stock_history') }}" class="btn btn-outline-primary">
+                    View Full History <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

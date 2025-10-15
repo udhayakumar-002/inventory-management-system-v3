@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}New Sale{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-cash-register"></i> New Sale</h2>
+        <a href="{{ url_for('sales') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Sales
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('create_sale') }}" id="saleForm">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Customer</label>
+                        <select class="form-control" name="customer_id">
+                            <option value="">Walk-in Customer (No Name)</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }} - {{ customer.phone or 'No Phone' }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Optional: Select existing customer or leave blank for walk-in</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Payment Method <span class="text-danger">*</span></label>
+                        <select class="form-control" name="payment_method" required>
+                            <option value="cash">💵 Cash</option>
+                            <option value="card">💳 Card (Credit/Debit)</option>
+                            <option value="upi">📱 UPI (PhonePe/GPay/Paytm)</option>
+                            <option value="bank_transfer">🏦 Bank Transfer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h5 class="mb-3"><i class="fas fa-shopping-cart"></i> Sale Items</h5>
+                
+                {% if products|length == 0 %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> No products available in stock. Please add products first!
+                </div>
+                {% else %}
+                
+                <div id="saleItems">
+                    <div class="row mb-2 sale-item">
+                        <div class="col-md-5">
+                            <label class="form-label">Product</label>
+                            <select class="form-control product-select" name="product_id[]" required onchange="updatePrice(this)">
+                                <option value="">-- Select Product --</option>
+                                {% for product in products %}
+                                <option value="{{ product.id }}" data-price="{{ product.unit_price }}" data-stock="{{ product.quantity }}">
+                                    {{ product.name }} - Stock: {{ product.quantity }} (₹{{ "%.2f"|format(product.unit_price) }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control quantity-input" name="quantity[]" placeholder="Qty" min="1" required onchange="calculateSubtotal(this)">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Unit Price (₹)</label>
+                            <input type="number" step="0.01" class="form-control price-input" name="unit_price[]" placeholder="0.00" required readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Subtotal</label>
+                            <input type="text" class="form-control subtotal-display" placeholder="₹0.00" readonly>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" class="btn btn-danger w-100" onclick="removeItem(this)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-success mb-4" onclick="addItem()">
+                    <i class="fas fa-plus"></i> Add Another Item
+                </button>
+
+                <div class="row">
+                    <div class="col-md-8"></div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h4 class="mb-0">Total: <span id="totalAmount">₹0.00</span></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-check-circle"></i> Complete Sale
+                    </button>
+                    <a href="{{ url_for('sales') }}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function updatePrice(select) {
+    const option = select.options[select.selectedIndex];
+    const row = select.closest('.sale-item');
+    const priceInput = row.querySelector('.price-input');
+    const quantityInput = row.querySelector('.quantity-input');
+    const stock = option.dataset.stock || 0;
+    
+    priceInput.value = option.dataset.price || 0;
+    quantityInput.max = stock;
+    quantityInput.placeholder = `Max: ${stock}`;
+    
+    calculateSubtotal(select);
+}
+
+function calculateSubtotal(element) {
+    const row = element.closest('.sale-item');
+    const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
+    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    const subtotal = quantity * price;
+    row.querySelector('.subtotal-display').value = '₹' + subtotal.toFixed(2);
+    calculateTotal();
+}
+
+function calculateTotal() {
+    let total = 0;
+    document.querySelectorAll('.sale-item').forEach(item => {
+        const quantity = parseFloat(item.querySelector('.quantity-input').value) || 0;
+        const price = parseFloat(item.querySelector('.price-input').value) || 0;
+        total += quantity * price;
+    });
+    document.getElementById('totalAmount').textContent = '₹' + total.toFixed(2);
+}
+
+function addItem() {
+    const container = document.getElementById('saleItems');
+    const firstItem = container.querySelector('.sale-item');
+    const newItem = firstItem.cloneNode(true);
+    newItem.querySelectorAll('input').forEach(input => input.value = '');
+    newItem.querySelector('select').selectedIndex = 0;
+    container.appendChild(newItem);
+}
+
+function removeItem(button) {
+    if (document.querySelectorAll('.sale-item').length > 1) {
+        button.closest('.sale-item').remove();
+        calculateTotal();
+    } else {
+        alert('At least one item is required for a sale!');
+    }
+}
+
+// Validate stock before submission
+document.getElementById('saleForm').addEventListener('submit', function(e) {
+    let valid = true;
+    document.querySelectorAll('.sale-item').forEach(item => {
+        const select = item.querySelector('.product-select');
+        const quantity = parseFloat(item.querySelector('.quantity-input').value) || 0;
+        const option = select.options[select.selectedIndex];
+        const stock = parseFloat(option.dataset.stock) || 0;
+        
+        if (quantity > stock) {
+            alert(`Insufficient stock for ${option.text}. Available: ${stock}, Requested: ${quantity}`);
+            valid = false;
+        }
+    });
+    
+    if (!valid) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}
